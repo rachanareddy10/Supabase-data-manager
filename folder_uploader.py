@@ -141,7 +141,6 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                         cur.execute("""
                             INSERT INTO days (folder_id, day_number, session_date, day_label)
                             VALUES (%s, %s, %s, %s)
-                            ON CONFLICT (folder_id, session_date) DO NOTHING
                             RETURNING day_id
                         """, (folder_id, session_folders.index(session_folder)+1, session_date, session_folder))
                         day_id = cur.fetchone()[0] if cur.rowcount else (
