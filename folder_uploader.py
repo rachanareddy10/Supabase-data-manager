@@ -88,10 +88,12 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                 ON CONFLICT (experiment_id, rig_name) DO NOTHING
                 RETURNING rig_id
             """, (experiment_id, rig_name))
-            rig_id = cur.fetchone()[0] if cur.rowcount else (
-                cur.execute("SELECT rig_id FROM rigs WHERE experiment_id = %s AND rig_name = %s", (experiment_id, rig_name)),
-                cur.fetchone()[0]
-            )[1]
+            rig_result = cur.fetchone()
+            if rig_result:
+                rig_id = rig_result[0]
+            else:
+                cur.execute("SELECT rig_id FROM rigs WHERE experiment_id = %s AND rig_name = %s", (experiment_id, rig_name))
+                rig_id = cur.fetchone()[0]
 
             for group_name in os.listdir(rig_path):
                 group_path = os.path.join(rig_path, group_name)
@@ -104,10 +106,12 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                     ON CONFLICT (rig_id, group_name) DO NOTHING
                     RETURNING group_id
                 """, (rig_id, group_name))
-                group_id = cur.fetchone()[0] if cur.rowcount else (
-                    cur.execute("SELECT group_id FROM exp_groups WHERE rig_id = %s AND group_name = %s", (rig_id, group_name)),
-                    cur.fetchone()[0]
-                )[1]
+                group_result = cur.fetchone()
+                if group_result:
+                    group_id = group_result[0]
+                else:
+                    cur.execute("SELECT group_id FROM exp_groups WHERE rig_id = %s AND group_name = %s", (rig_id, group_name))
+                    group_id = cur.fetchone()[0]
 
                 for folder_name in os.listdir(group_path):
                     folder_path = os.path.join(group_path, folder_name)
@@ -122,10 +126,12 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                         ON CONFLICT (group_id, folder_name) DO NOTHING
                         RETURNING folder_id
                     """, (group_id, folder_name, folder_type))
-                    folder_id = cur.fetchone()[0] if cur.rowcount else (
-                        cur.execute("SELECT folder_id FROM training_folders WHERE group_id = %s AND folder_name = %s", (group_id, folder_name)),
-                        cur.fetchone()[0]
-                    )[1]
+                    folder_result = cur.fetchone()
+                    if folder_result:
+                        folder_id = folder_result[0]
+                    else:
+                        cur.execute("SELECT folder_id FROM training_folders WHERE group_id = %s AND folder_name = %s", (group_id, folder_name))
+                        folder_id = cur.fetchone()[0]
 
                     session_folders = sorted(
                         [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d))],
@@ -143,10 +149,16 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                             VALUES (%s, %s, %s, %s)
                             RETURNING day_id
                         """, (folder_id, session_folders.index(session_folder)+1, session_date, session_folder))
-                        day_id = cur.fetchone()[0] if cur.rowcount else (
-                            cur.execute("SELECT day_id FROM days WHERE folder_id = %s AND session_date = %s", (folder_id, session_date)),
-                            cur.fetchone()[0]
-                        )[1]
+                        day_result = cur.fetchone()
+                        if day_result:
+                            day_id = day_result[0]
+                        else:
+                            cur.execute("SELECT day_id FROM days WHERE folder_id = %s AND session_date = %s", (folder_id, session_date))
+                            res = cur.fetchone()
+                            if not res:
+                                st.error(f"Could not get day_id for {session_folder}")
+                                continue
+                            day_id = res[0]
 
                         for file in os.listdir(session_path):
                             ext = os.path.splitext(file)[1].lower()
@@ -162,7 +174,7 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                                 st.warning(f"⚠️ Skipping {file}: missing Animal ID")
                                 continue
 
-                            # Insert mouse if it's a non-pro file and ID is present
+                            # Insert mouse if applicable
                             if animal_id:
                                 cur.execute("""
                                     INSERT INTO mice (mouse_id, group_id)
@@ -170,7 +182,7 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                                     ON CONFLICT (mouse_id) DO NOTHING
                                 """, (animal_id, group_id))
 
-                            # Upload file to Supabase Storage
+                            # Upload file to Supabase
                             storage_path = f"{experiment_name}/{rig_name}/{group_name}/{folder_name}/{session_folder}/{file}"
                             url = upload_file_to_storage(file_path, storage_path, supabase)
 
@@ -178,7 +190,7 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                                 st.warning(f"⚠️ Failed to upload {file}, skipping DB insert")
                                 continue
 
-                            # Insert file into DB
+                            # Insert into files table
                             try:
                                 cur.execute("""
                                     INSERT INTO files (
