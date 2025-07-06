@@ -155,14 +155,15 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                                 continue
                             file_path = os.path.join(session_path, file)
 
-                            # Only extract Animal ID for non-.pro files
+                            # Extract mouse_id only for non-pro files
                             animal_id = extract_animal_id(file_path) if ext != '.pro' else None
 
                             # If not .pro and no mouse ID → skip
                             if ext != '.pro' and not animal_id:
+                                st.warning(f"⚠️ Skipping {file}: missing Animal ID")
                                 continue
 
-                            # Insert mouse if applicable
+                            # Insert mouse if it's a non-pro file and ID is present
                             if animal_id:
                                 cur.execute("""
                                     INSERT INTO mice (mouse_id, group_id)
@@ -170,17 +171,28 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                                     ON CONFLICT (mouse_id) DO NOTHING
                                 """, (animal_id, group_id))
 
-                            # Upload file to Supabase
+                            # Upload file to Supabase Storage
                             storage_path = f"{experiment_name}/{rig_name}/{group_name}/{folder_name}/{session_folder}/{file}"
                             url = upload_file_to_storage(file_path, storage_path, supabase)
 
-                            # Insert file record
-                            if url:
+                            if not url:
+                                st.warning(f"⚠️ Failed to upload {file}, skipping DB insert")
+                                continue
+
+                            # Insert file into DB
+                            try:
                                 cur.execute("""
-                                    INSERT INTO files (experiment_id, rig_id, group_id, folder_id, day_id, original_name, mouse_id, uploader, version, file_url)
+                                    INSERT INTO files (
+                                        experiment_id, rig_id, group_id, folder_id, day_id,
+                                        original_name, mouse_id, uploader, version, file_url
+                                    )
                                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NULL, %s)
-                                    ON CONFLICT (day_id, original_name) DO NOTHING
-                                """, (experiment_id, rig_id, group_id, folder_id, day_id,file, animal_id, uploader, url))
+                                """, (
+                                    experiment_id, rig_id, group_id, folder_id, day_id,
+                                    file, animal_id, uploader, url
+                                ))
+                            except Exception as e:
+                                st.error(f"❌ Failed to insert file record for {file}: {str(e)}")
 
         conn.commit()
         return True
