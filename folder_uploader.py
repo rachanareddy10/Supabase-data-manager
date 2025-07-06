@@ -154,12 +154,18 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                             file_path = os.path.join(session_path, file)
 
                             # Determine correct mouse_id source
+                            animal_id = None
+
                             if ext == '.pro':
                                 animal_id = None
                             elif ext == '.ms8':
-                                txt_file = file + ".txt" if not file.endswith(".txt") else file
-                                txt_path = os.path.join(session_path, txt_file)
-                                animal_id = extract_animal_id(txt_path) if os.path.exists(txt_path) else None
+                                txt_filename = file + ".txt"
+                                txt_path = os.path.join(session_path, txt_filename)
+                                if os.path.exists(txt_path):
+                                    animal_id = extract_animal_id(txt_path)
+                                else:
+                                    st.warning(f"⚠️ Skipping {file}: no matching .ms8.txt to extract Animal ID")
+                                    continue
                             else:
                                 animal_id = extract_animal_id(file_path)
 
