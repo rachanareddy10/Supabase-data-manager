@@ -177,10 +177,10 @@ def process_folder(root_path: str, supabase: Client, uploader: str, experiment_d
                             # Insert file record
                             if url:
                                 cur.execute("""
-                                    INSERT INTO files (day_id, original_name, mouse_id, uploader, file_url)
-                                    VALUES (%s, %s, %s, %s, %s)
+                                    INSERT INTO files (experiment_id, rig_id, group_id, folder_id, day_id, original_name, mouse_id, uploader, version, file_url)
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NULL, %s)
                                     ON CONFLICT (day_id, original_name) DO NOTHING
-                                """, (day_id, file, animal_id, uploader, url))
+                                """, (experiment_id, rig_id, group_id, folder_id, day_id,file, animal_id, uploader, url))
 
         conn.commit()
         return True
