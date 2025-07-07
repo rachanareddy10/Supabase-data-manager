@@ -7,18 +7,14 @@ from dotenv import load_dotenv
 from supabase import create_client
 from folder_uploader import process_folder, get_db_connection
 
-# Load environment variables
-load_dotenv()
+# -------------------------------
+# ⚙️ Page Config
+# -------------------------------
+st.set_page_config(page_title="Data Management", layout="wide")
 
-# Initialize Supabase client
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-# ------------------------------------
-# 🔐 Universal Login using st.secrets
-# ------------------------------------
-
+# -------------------------------
+# 🔐 Login Helpers
+# -------------------------------
 def check_login(input_user, input_pass):
     try:
         return (
@@ -28,14 +24,18 @@ def check_login(input_user, input_pass):
     except Exception:
         return False
 
-# Initialize login state
+# -------------------------------
+# 🔐 Session Management
+# -------------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-query_params = st.query_params
+if "trigger_rerun" not in st.session_state:
+    st.session_state.trigger_rerun = False
 
-# Login block
+# Login UI
 if not st.session_state.logged_in:
+    st.title("Lemon Lab Data Portal")
     st.subheader("🔐 Please log in to continue")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
@@ -44,20 +44,36 @@ if not st.session_state.logged_in:
     if login_btn:
         if check_login(username.strip(), password.strip()):
             st.session_state.logged_in = True
+            st.session_state.trigger_rerun = True
             st.success("✅ Login successful! Redirecting...")
-            st.query_params.update({"logged": "true"})  # trigger rerun safely
             st.stop()
         else:
             st.error("❌ Invalid credentials.")
     st.stop()
 
-# ------------------------------------
-# ✅ Main App (Shown After Login)
-# ------------------------------------
+# Trigger full rerun after login
+if st.session_state.trigger_rerun:
+    st.session_state.trigger_rerun = False
+    st.experimental_rerun()
 
-# Only configure page layout after login to avoid layout flash
-st.set_page_config(page_title="Data Management", layout="wide")
+# -------------------------------
+# ✅ Main App (After Login)
+# -------------------------------
 st.title("Lemon Lab Data Portal")
+
+# 🔁 Logout button
+st.sidebar.title("Session")
+if st.sidebar.button("🚪 Logout"):
+    st.session_state.clear()
+    st.experimental_rerun()
+
+# Load environment variables
+load_dotenv()
+
+# Supabase init
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # Utility: Remove system files like .DS_Store, __MACOSX
 def clean_system_files(root_path):
@@ -75,7 +91,7 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
-# Tabs: Upload and View
+# Tabs
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
 # -------------------------
