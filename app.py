@@ -10,21 +10,25 @@ from folder_uploader import process_folder, get_db_connection
 # Load environment variables
 load_dotenv()
 
+# Streamlit config
+st.set_page_config(page_title="Data Management", layout="wide")
+st.title("Lemon Lab Data Portal")
+
 # Supabase init
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# Set Streamlit page config
-st.set_page_config(page_title="Data Management", layout="wide")
-st.title("Lemon Lab Data Portal")
-
-# --------------------------------
-# 🔐 Universal Login
-# --------------------------------
+# Secure Login using secrets
 
 def check_login(input_user, input_pass):
-    return input_user == "Lemonlab2025" and input_pass == "Research@5860"
+    try:
+        return (
+            input_user == st.secrets["login"]["username"]
+            and input_pass == st.secrets["login"]["password"]
+        )
+    except Exception:
+        return False
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -38,17 +42,16 @@ if not st.session_state.logged_in:
     if login_btn:
         if check_login(username.strip(), password.strip()):
             st.session_state.logged_in = True
-            st.success("Login successful! Loading app...")
+            st.success("✅ Login successful!")
             st.experimental_rerun()
         else:
             st.error("❌ Invalid credentials.")
-    st.stop()  # Prevent access to rest of app until logged in
+    st.stop()  # Block rest of app
 
-# --------------------------------
-# ✅ App content shown only after login
-# --------------------------------
 
-# Remove system files like .DS_Store, __MACOSX
+# App visible only after login
+
+# Utility: Remove system files like .DS_Store, __MACOSX
 def clean_system_files(root_path):
     for root, dirs, files in os.walk(root_path, topdown=False):
         for name in dirs + files:
@@ -68,7 +71,7 @@ def get_experiment_root(tmpdir):
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
 # -------------------------
-# 📤 Upload Tab
+# Upload Tab
 # -------------------------
 with tab1:
     with st.form("upload_form"):
@@ -109,9 +112,7 @@ with tab1:
                 except Exception as e:
                     st.error(f"🚨 Critical error: {str(e)}")
 
-# -------------------------
-# View Database  Tab
-# -------------------------
+#  View Database Tab
 
 with tab2:
     st.subheader("📋 View Database Tables")
