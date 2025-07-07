@@ -19,7 +19,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# Secure Login using secrets
+# -------------------------------
+# Universal Login using Secrets
+# -------------------------------
 
 def check_login(input_user, input_pass):
     try:
@@ -43,13 +45,14 @@ if not st.session_state.logged_in:
         if check_login(username.strip(), password.strip()):
             st.session_state.logged_in = True
             st.success("✅ Login successful!")
-            st.experimental_rerun()
         else:
             st.error("❌ Invalid credentials.")
-    st.stop()  # Block rest of app
 
+    st.stop()  # Prevent further rendering until logged in
 
-# App visible only after login
+# -------------------------------
+#  Main App after Login
+# -------------------------------
 
 # Utility: Remove system files like .DS_Store, __MACOSX
 def clean_system_files(root_path):
@@ -71,7 +74,7 @@ def get_experiment_root(tmpdir):
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
 # -------------------------
-# Upload Tab
+#  Upload Tab
 # -------------------------
 with tab1:
     with st.form("upload_form"):
@@ -112,8 +115,9 @@ with tab1:
                 except Exception as e:
                     st.error(f"🚨 Critical error: {str(e)}")
 
+# -------------------------
 #  View Database Tab
-
+# -------------------------
 with tab2:
     st.subheader("📋 View Database Tables")
     table = st.selectbox("Select table to view", [
