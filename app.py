@@ -35,6 +35,10 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
+def check_login(input_user, input_pass):
+    # Hardcoded credentials for login
+    return input_user == "Lemonlab2025" and input_pass == "Research@5860"
+
 # Tabs: Upload and View
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
@@ -81,24 +85,28 @@ with tab1:
                     st.error(f"🚨 Critical error: {str(e)}")
 
 # -------------------------
-# 📂 View Database Tab (Secure)
+#  View Database Tab (With Login)
 # -------------------------
 with tab2:
-    st.subheader("🔐 Secure Database Viewer")
+    st.subheader("🔐 Secure Login to View Database")
 
-    access_key = st.text_input("Enter access key to view database", type="password")
-    correct_key = st.secrets["viewer"]["access_key"]
+    login_user = st.text_input("Username")
+    login_pass = st.text_input("Password", type="password")
+    login_button = st.button("Login")
 
-    if access_key == correct_key:
-        table = st.selectbox("Select table to view", [
-            "experiments", "rigs", "exp_groups", "mice", "training_folders", "days", "files"
-        ])
-        try:
-            conn = get_db_connection()
-            df = pd.read_sql(f"SELECT * FROM {table} ORDER BY 1 DESC", conn)
-            conn.close()
-            st.dataframe(df, use_container_width=True)
-        except Exception as e:
-            st.error(f"❌ Failed to fetch data: {str(e)}")
-    elif access_key:
-        st.error("❌ Incorrect access key")
+    if login_button:
+        if check_login(login_user.strip(), login_pass.strip()):
+            st.success(f"Welcome, {login_user}!")
+
+            table = st.selectbox("Select table to view", [
+                "experiments", "rigs", "exp_groups", "mice", "training_folders", "days", "files"
+            ])
+            try:
+                conn = get_db_connection()
+                df = pd.read_sql(f"SELECT * FROM {table} ORDER BY 1 DESC", conn)
+                conn.close()
+                st.dataframe(df, use_container_width=True)
+            except Exception as e:
+                st.error(f"❌ Failed to fetch data: {str(e)}")
+        else:
+            st.error("❌ Invalid credentials. Please try again.")
