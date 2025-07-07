@@ -13,7 +13,14 @@ from folder_uploader import process_folder, get_db_connection
 st.set_page_config(page_title="Data Management", layout="wide")
 
 # -------------------------------
-# 🔐 Login Helpers
+# 🔐 Query Param Login Check
+# -------------------------------
+params = st.query_params
+if params.get("logged_in") == ["true"]:
+    st.session_state.logged_in = True
+
+# -------------------------------
+# 🔐 Login Function
 # -------------------------------
 def check_login(input_user, input_pass):
     try:
@@ -24,16 +31,12 @@ def check_login(input_user, input_pass):
     except Exception:
         return False
 
-# -------------------------------
-# 🔐 Session Management
-# -------------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-if "trigger_rerun" not in st.session_state:
-    st.session_state.trigger_rerun = False
-
-# Login UI
+# -------------------------------
+# 🔐 Login Form
+# -------------------------------
 if not st.session_state.logged_in:
     st.title("Lemon Lab Data Portal")
     st.subheader("🔐 Please log in to continue")
@@ -43,18 +46,12 @@ if not st.session_state.logged_in:
 
     if login_btn:
         if check_login(username.strip(), password.strip()):
-            st.session_state.logged_in = True
-            st.session_state.trigger_rerun = True
             st.success("✅ Login successful! Redirecting...")
+            st.query_params.update({"logged_in": "true"})
             st.stop()
         else:
             st.error("❌ Invalid credentials.")
     st.stop()
-
-# Trigger full rerun after login
-if st.session_state.trigger_rerun:
-    st.session_state.trigger_rerun = False
-    st.experimental_rerun()
 
 # -------------------------------
 # ✅ Main App (After Login)
@@ -65,6 +62,7 @@ st.title("Lemon Lab Data Portal")
 st.sidebar.title("Session")
 if st.sidebar.button("🚪 Logout"):
     st.session_state.clear()
+    st.query_params.clear()
     st.experimental_rerun()
 
 # Load environment variables
@@ -91,7 +89,7 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
-# Tabs
+# Tabs: Upload and View
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
 # -------------------------
