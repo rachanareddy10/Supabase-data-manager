@@ -11,8 +11,8 @@ from folder_uploader import process_folder, get_db_connection
 load_dotenv()
 
 # Set Streamlit page config
-st.set_page_config(page_title="Mouse Data Management", layout="wide")
-st.title("🐭 Mouse Experiment Data Portal")
+st.set_page_config(page_title="Data Management", layout="wide")
+st.title("Lemon Lab Data")
 
 # Supabase init
 SUPABASE_URL = os.getenv("SUPABASE_URL")
