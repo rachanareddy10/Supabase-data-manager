@@ -33,8 +33,7 @@ if not st.session_state.logged_in:
             if check_login(username.strip(), password.strip()):
                 st.session_state.logged_in = True
                 st.session_state.just_logged_in = True  # ✅ avoid rerun
-                st.success("✅ Login successful!")
-                st.stop()
+                st.experimental_rerun()
             else:
                 st.error("❌ Invalid username or password.")
     st.stop()
