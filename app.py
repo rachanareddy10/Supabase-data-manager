@@ -17,9 +17,11 @@ def check_login(username, password):
         and password == st.secrets["login"]["password"]
     )
 
+# Initialize login state
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
+# Render login if not logged in
 if not st.session_state.logged_in:
     st.set_page_config(page_title="Lemon Lab Data Portal", layout="centered")
     st.title("🔐 Lemon Lab Data Portal")
@@ -30,8 +32,9 @@ if not st.session_state.logged_in:
         if submitted:
             if check_login(username.strip(), password.strip()):
                 st.session_state.logged_in = True
+                st.session_state.just_logged_in = True  # ✅ avoid rerun
                 st.success("✅ Login successful!")
-                 st.stop() 
+                st.stop()
             else:
                 st.error("❌ Invalid username or password.")
     st.stop()
@@ -40,7 +43,13 @@ if not st.session_state.logged_in:
 # ✅ Main App (only if logged in)
 # -------------------------------
 st.set_page_config(page_title="Lemon Lab Data Portal", layout="wide")
-st.title(" Lemon Lab Data Portal")
+
+# Skip login flicker after just logging in
+if st.session_state.get("just_logged_in"):
+    del st.session_state["just_logged_in"]
+    st.experimental_set_query_params()  # optional: clears old query params
+
+st.title("🐭 Lemon Lab Data Portal")
 
 # 🔁 Logout
 st.sidebar.title("Session")
@@ -49,12 +58,13 @@ if st.sidebar.button("🚪 Logout"):
         del st.session_state[key]
     st.experimental_rerun()
 
-# Load env
+# Load environment variables
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+# Helpers
 def clean_system_files(root_path):
     for root, dirs, files in os.walk(root_path, topdown=False):
         for name in dirs + files:
