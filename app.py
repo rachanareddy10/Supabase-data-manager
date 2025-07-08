@@ -13,11 +13,10 @@ from folder_uploader import process_folder, get_db_connection
 st.set_page_config(page_title="Data Management", layout="wide")
 
 # -------------------------------
-# 🔐 Query Param Login Check
+# 🔐 Check if already logged in
 # -------------------------------
 params = st.query_params
-if params.get("logged_in") == ["true"]:
-    st.session_state.logged_in = True
+logged_in = params.get("logged_in") == ["true"]
 
 # -------------------------------
 # 🔐 Login Function
@@ -31,13 +30,10 @@ def check_login(input_user, input_pass):
     except Exception:
         return False
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
 # -------------------------------
-# 🔐 Login Form
+# 🔐 Login Page (Only if not logged in)
 # -------------------------------
-if not st.session_state.logged_in:
+if not logged_in:
     st.title("Lemon Lab Data Portal")
     st.subheader("🔐 Please log in to continue")
     username = st.text_input("Username")
@@ -46,7 +42,6 @@ if not st.session_state.logged_in:
 
     if login_btn:
         if check_login(username.strip(), password.strip()):
-            st.session_state.logged_in = True
             st.success("✅ Login successful! Redirecting...")
             st.query_params.update({"logged_in": "true"})
             st.markdown('<meta http-equiv="refresh" content="1">', unsafe_allow_html=True)
@@ -63,7 +58,6 @@ st.title("Lemon Lab Data Portal")
 # 🔁 Logout button
 st.sidebar.title("Session")
 if st.sidebar.button("🚪 Logout"):
-    st.session_state.clear()
     st.query_params.clear()
     st.experimental_rerun()
 
