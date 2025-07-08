@@ -16,18 +16,19 @@ def check_login(username, password):
         and password == st.secrets["login"]["password"]
     )
 
-# Setup session state
-if "logged_in" not in st.session_state:
+# Initialize session state
+if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 # -------------------------------
-# 🔒 Login Page
+# 🔒 Login Page (if not logged in)
 # -------------------------------
 if not st.session_state.logged_in:
     st.set_page_config(page_title="Lemon Lab Login", layout="centered")
     st.title("🔐 Lemon Lab Data Portal")
 
-    with st.form("login_form", clear_on_submit=True):
+    login_placeholder = st.empty()
+    with login_placeholder.form("login_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Login")
@@ -35,10 +36,11 @@ if not st.session_state.logged_in:
     if submitted:
         if check_login(username.strip(), password.strip()):
             st.session_state.logged_in = True
-            st.success("✅ Login successful!")
+            login_placeholder.empty()  # Clear the login form
+            st.rerun()  # Force a rerun to show the main app
         else:
             st.error("❌ Invalid credentials.")
-    st.stop()
+    st.stop()  # This prevents the rest of the app from running
 
 # -------------------------------
 # ✅ Main App (after login)
@@ -46,14 +48,10 @@ if not st.session_state.logged_in:
 st.set_page_config(page_title="Lemon Lab Data Portal", layout="wide")
 st.title("🐭 Lemon Lab Data Portal")
 
-# Logout button
-st.sidebar.title("Session")
+# Logout button with proper session clearing
 if st.sidebar.button("🚪 Logout"):
     st.session_state.clear()
-    st.query_params.clear()
-    st.experimental_set_query_params()  # clear URL state
-    st.success("✅ Logged out.")
-    st.stop()
+    st.rerun()  # Force immediate rerun to show login page
 
 # Load environment variables
 load_dotenv()
