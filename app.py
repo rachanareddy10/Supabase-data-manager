@@ -13,6 +13,13 @@ from folder_uploader import process_folder, get_db_connection
 st.set_page_config(page_title="Data Management", layout="wide")
 
 # -------------------------------
+# 🔁 Rerun Trigger After Login
+# -------------------------------
+if st.session_state.get("rerun_required"):
+    st.session_state.rerun_required = False
+    st.experimental_rerun()
+
+# -------------------------------
 # 🔐 Query Param Login Check
 # -------------------------------
 params = st.query_params
@@ -46,8 +53,9 @@ if not st.session_state.logged_in:
 
     if login_btn:
         if check_login(username.strip(), password.strip()):
-            st.success("✅ Login successful! Redirecting...")
-            st.query_params.update({"logged_in": "true"})
+            st.session_state.logged_in = True
+            st.session_state.rerun_required = True  # ✅ trigger rerun
+            st.query_params.update({"logged_in": "true"})  # ✅ set login param
             st.stop()
         else:
             st.error("❌ Invalid credentials.")
