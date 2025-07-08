@@ -12,39 +12,44 @@ from folder_uploader import process_folder, get_db_connection
 # -------------------------------
 
 # 1. Handle login check
+# -------------------------------
+# 🔐 Login Handling
+# -------------------------------
+
 def check_login(username, password):
     return (
         username == st.secrets["login"]["username"]
         and password == st.secrets["login"]["password"]
     )
 
-# 2. Init state
+# Initialize login state
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# 3. Show login form only if not logged in
+# Login UI
 if not st.session_state.logged_in:
     st.set_page_config(page_title="Lemon Lab Data Portal", layout="centered")
     st.title("🔐 Lemon Lab Data Portal")
 
-    with st.form("login_form", clear_on_submit=True):
+    with st.form("login_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Login")
+        submitted = st.form_submit_button("Login")
 
-    if submit:
+    if submitted:
         if check_login(username.strip(), password.strip()):
             st.session_state.logged_in = True
             st.session_state.just_logged_in = True
             st.success("✅ Login successful!")
             st.stop()
         else:
-            st.error("❌ Invalid credentials.")
+            st.error("❌ Invalid username or password.")
     st.stop()
 
-# 4. Clean up just_logged_in after reload
+# After login, clear just_logged_in flag
 if st.session_state.get("just_logged_in"):
     del st.session_state["just_logged_in"]
+    st.query_params.clear()  # ✅ replace deprecated function
 
 
 # -------------------------------
