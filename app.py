@@ -13,7 +13,7 @@ from folder_uploader import process_folder, get_db_connection
 st.set_page_config(page_title="Data Management", layout="wide")
 
 # -------------------------------
-# 🔐 Check if already logged in
+# 🔐 Check if logged in via query param
 # -------------------------------
 params = st.query_params
 logged_in = params.get("logged_in") == ["true"]
@@ -31,7 +31,7 @@ def check_login(input_user, input_pass):
         return False
 
 # -------------------------------
-# 🔐 Login Page (Only if not logged in)
+# 🔐 Login Form (only if not logged in)
 # -------------------------------
 if not logged_in:
     st.title("Lemon Lab Data Portal")
@@ -85,7 +85,9 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
-# Tabs: Upload and View
+# -------------------------------
+# 📤 Upload + 📂 View Tabs
+# -------------------------------
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
 # -------------------------
@@ -104,7 +106,6 @@ with tab1:
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
-                    # Save and unzip
                     zip_path = os.path.join(tmpdir, zip_file.name)
                     with open(zip_path, "wb") as f:
                         f.write(zip_file.getbuffer())
@@ -131,17 +132,24 @@ with tab1:
                     st.error(f"🚨 Critical error: {str(e)}")
 
 # -------------------------
-# 📂 View Database Tab
+# 📂 View Database Tab (Requires Access Key)
 # -------------------------
 with tab2:
-    st.subheader("📋 View Database Tables")
-    table = st.selectbox("Select table to view", [
-        "experiments", "rigs", "exp_groups", "mice", "training_folders", "days", "files"
-    ])
-    try:
-        conn = get_db_connection()
-        df = pd.read_sql(f"SELECT * FROM {table} ORDER BY 1 DESC", conn)
-        conn.close()
-        st.dataframe(df, use_container_width=True)
-    except Exception as e:
-        st.error(f"❌ Failed to fetch data: {str(e)}")
+    st.subheader("🔐 Secure Database Viewer")
+
+    access_key_input = st.text_input("Enter access key to view database", type="password")
+    correct_key = st.secrets["viewer"]["access_key"]
+
+    if access_key_input == correct_key:
+        table = st.selectbox("Select table to view", [
+            "experiments", "rigs", "exp_groups", "mice", "training_folders", "days", "files"
+        ])
+        try:
+            conn = get_db_connection()
+            df = pd.read_sql(f"SELECT * FROM {table} ORDER BY 1 DESC", conn)
+            conn.close()
+            st.dataframe(df, use_container_width=True)
+        except Exception as e:
+            st.error(f"❌ Failed to fetch data: {str(e)}")
+    elif access_key_input:
+        st.error("❌ Incorrect access key.")
