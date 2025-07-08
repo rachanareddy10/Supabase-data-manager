@@ -1,19 +1,14 @@
+import streamlit as st
 import os
 import tempfile
 import shutil
-import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
 from folder_uploader import process_folder, get_db_connection
 
 # -------------------------------
-# ⚙️ Page Config
-# -------------------------------
-st.set_page_config(page_title="Data Management", layout="wide")
-
-# -------------------------------
-# 🔐 Login Function
+# 🔐 Login check FIRST — before layout
 # -------------------------------
 def check_login(username, password):
     return (
@@ -21,16 +16,11 @@ def check_login(username, password):
         and password == st.secrets["login"]["password"]
     )
 
-# -------------------------------
-# 🔐 Session State Init
-# -------------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# -------------------------------
-# 🔐 Login UI
-# -------------------------------
 if not st.session_state.logged_in:
+    st.set_page_config(page_title="Data Management", layout="wide")
     st.title("Lemon Lab Data Portal")
     st.subheader("🔐 Please log in to continue")
     with st.form("login_form"):
@@ -40,32 +30,32 @@ if not st.session_state.logged_in:
         if submitted:
             if check_login(username.strip(), password.strip()):
                 st.session_state.logged_in = True
-                st.session_state.just_logged_in = True 
+                st.experimental_rerun()
             else:
                 st.error("❌ Invalid username or password.")
     st.stop()
 
-# -------------------------------
-# ✅ Main App (Post Login)
-# -------------------------------
+# ✅ Now render layout AFTER login only
+st.set_page_config(page_title="Data Management", layout="wide")
 st.title("Lemon Lab Data Portal")
 
-# 🔁 Logout
+# -------------------------------
+# 🔁 Logout button
+# -------------------------------
 st.sidebar.title("Session")
 if st.sidebar.button("🚪 Logout"):
-    for key in st.session_state.keys():
+    for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.experimental_rerun()
 
 # Load env
 load_dotenv()
 
-# Supabase init
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# Utility: Clean system files
+# Clean helper
 def clean_system_files(root_path):
     for root, dirs, files in os.walk(root_path, topdown=False):
         for name in dirs + files:
@@ -81,12 +71,11 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
-# Tabs
+# -------------------------------
+# 📤 Upload + 📂 View Tabs
+# -------------------------------
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
-# -------------------------
-# 📤 Upload Tab
-# -------------------------
 with tab1:
     with st.form("upload_form"):
         uploader = st.text_input("Uploader Name*", max_chars=100)
@@ -96,20 +85,17 @@ with tab1:
             if not all([uploader.strip(), description.strip(), zip_file]):
                 st.warning("Please fill in all required fields.")
                 st.stop()
-
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     zip_path = os.path.join(tmpdir, zip_file.name)
                     with open(zip_path, "wb") as f:
                         f.write(zip_file.getbuffer())
                     shutil.unpack_archive(zip_path, tmpdir)
-
                     clean_system_files(tmpdir)
                     exp_path = get_experiment_root(tmpdir)
                     if not exp_path:
                         st.error("❌ No valid experiment folder found.")
                         st.stop()
-
                     with st.spinner("Processing and uploading..."):
                         success = process_folder(
                             root_path=exp_path,
@@ -124,9 +110,6 @@ with tab1:
                 except Exception as e:
                     st.error(f"🚨 Critical error: {str(e)}")
 
-# -------------------------
-# 📂 View Database Tab (Unrestricted after login)
-# -------------------------
 with tab2:
     st.subheader("📋 View Database Tables")
     table = st.selectbox("Select table to view", [
