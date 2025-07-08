@@ -30,8 +30,8 @@ if not st.session_state.logged_in:
         if submitted:
             if check_login(username.strip(), password.strip()):
                 st.session_state.logged_in = True
-                st.success("✅ Login successful! Please wait...")
-                st.experimental_rerun()
+                st.success("✅ Login successful!")
+                 st.stop() 
             else:
                 st.error("❌ Invalid username or password.")
     st.stop()
@@ -40,7 +40,7 @@ if not st.session_state.logged_in:
 # ✅ Main App (only if logged in)
 # -------------------------------
 st.set_page_config(page_title="Lemon Lab Data Portal", layout="wide")
-st.title("🐭 Lemon Lab Data Portal")
+st.title(" Lemon Lab Data Portal")
 
 # 🔁 Logout
 st.sidebar.title("Session")
