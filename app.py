@@ -1,37 +1,33 @@
-import streamlit as st
 import os
 import tempfile
 import shutil
+import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
 from folder_uploader import process_folder, get_db_connection
 
 # -------------------------------
-# 🔐 Login Handling (top of file)
+# 🔐 Login Logic
 # -------------------------------
-
-# 1. Handle login check
-# -------------------------------
-# 🔐 Login Handling
-# -------------------------------
-
 def check_login(username, password):
     return (
         username == st.secrets["login"]["username"]
         and password == st.secrets["login"]["password"]
     )
 
-# Initialize login state
+# Setup session state
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# Login UI
+# -------------------------------
+# 🔒 Login Page
+# -------------------------------
 if not st.session_state.logged_in:
-    st.set_page_config(page_title="Lemon Lab Data Portal", layout="centered")
+    st.set_page_config(page_title="Lemon Lab Login", layout="centered")
     st.title("🔐 Lemon Lab Data Portal")
 
-    with st.form("login_form"):
+    with st.form("login_form", clear_on_submit=True):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Login")
@@ -39,39 +35,25 @@ if not st.session_state.logged_in:
     if submitted:
         if check_login(username.strip(), password.strip()):
             st.session_state.logged_in = True
-            st.session_state.just_logged_in = True
             st.success("✅ Login successful!")
-            st.stop()
         else:
-            st.error("❌ Invalid username or password.")
+            st.error("❌ Invalid credentials.")
     st.stop()
 
-# After login, clear just_logged_in flag
-if st.session_state.get("just_logged_in"):
-    del st.session_state["just_logged_in"]
-    st.query_params.clear()  # ✅ replace deprecated function
-
-
 # -------------------------------
-# ✅ Main App (only if logged in)
+# ✅ Main App (after login)
 # -------------------------------
-# Main App
 st.set_page_config(page_title="Lemon Lab Data Portal", layout="wide")
-st.title(" Lemon Lab Data Portal")
-
-# Skip login flicker after just logging in
-if st.session_state.get("just_logged_in"):
-    del st.session_state["just_logged_in"]
-    st.experimental_set_query_params()  # optional: clears old query params
-
 st.title("🐭 Lemon Lab Data Portal")
 
-# 🔁 Logout
+# Logout button
 st.sidebar.title("Session")
 if st.sidebar.button("🚪 Logout"):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.experimental_rerun()
+    st.session_state.clear()
+    st.query_params.clear()
+    st.experimental_set_query_params()  # clear URL state
+    st.success("✅ Logged out.")
+    st.stop()
 
 # Load environment variables
 load_dotenv()
@@ -95,31 +77,36 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
-# -------------------------------
 # Tabs: Upload and View Database
-# -------------------------------
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
+# -------------------------
+# 📤 Upload Tab
+# -------------------------
 with tab1:
     with st.form("upload_form"):
         uploader = st.text_input("Uploader Name*", max_chars=100)
         description = st.text_area("Experiment Description*", max_chars=500)
         zip_file = st.file_uploader("Upload Zipped Folder*", type=["zip"])
+
         if st.form_submit_button("Upload Data"):
             if not all([uploader.strip(), description.strip(), zip_file]):
                 st.warning("Please fill in all required fields.")
                 st.stop()
+
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     zip_path = os.path.join(tmpdir, zip_file.name)
                     with open(zip_path, "wb") as f:
                         f.write(zip_file.getbuffer())
                     shutil.unpack_archive(zip_path, tmpdir)
+
                     clean_system_files(tmpdir)
                     exp_path = get_experiment_root(tmpdir)
                     if not exp_path:
                         st.error("❌ No valid experiment folder found.")
                         st.stop()
+
                     with st.spinner("Processing and uploading..."):
                         success = process_folder(
                             root_path=exp_path,
@@ -134,6 +121,9 @@ with tab1:
                 except Exception as e:
                     st.error(f"🚨 Critical error: {str(e)}")
 
+# -------------------------
+# 📂 View Tab
+# -------------------------
 with tab2:
     st.subheader("📋 View Database Tables")
     table = st.selectbox("Select table to view", [
