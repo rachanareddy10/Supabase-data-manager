@@ -40,6 +40,7 @@ if not st.session_state.logged_in:
         if submitted:
             if check_login(username.strip(), password.strip()):
                 st.session_state.logged_in = True
+                st.experimental_rerun()
             else:
                 st.error("❌ Invalid username or password.")
     st.stop()
