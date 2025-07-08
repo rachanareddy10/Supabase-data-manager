@@ -13,7 +13,7 @@ from folder_uploader import process_folder, get_db_connection
 st.set_page_config(page_title="Data Management", layout="wide")
 
 # -------------------------------
-# 🔐 Secrets-based Login + Access Key
+# 🔐 Login Function
 # -------------------------------
 def check_login(username, password):
     return (
@@ -21,17 +21,11 @@ def check_login(username, password):
         and password == st.secrets["login"]["password"]
     )
 
-def check_access_key(input_key):
-    return input_key == st.secrets["viewer"]["access_key"]
-
 # -------------------------------
 # 🔐 Session State Init
 # -------------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-
-if "access_granted" not in st.session_state:
-    st.session_state.access_granted = False
 
 # -------------------------------
 # 🔐 Login UI
@@ -130,23 +124,10 @@ with tab1:
                     st.error(f"🚨 Critical error: {str(e)}")
 
 # -------------------------
-# 📂 View Tab (Access Key Protected)
+# 📂 View Database Tab (Unrestricted after login)
 # -------------------------
 with tab2:
-    st.subheader("🔐 Secure Database Viewer")
-
-    if not st.session_state.access_granted:
-        with st.form("access_form"):
-            key_input = st.text_input("Enter access key", type="password")
-            key_submit = st.form_submit_button("Unlock Viewer")
-            if key_submit:
-                if check_access_key(key_input.strip()):
-                    st.session_state.access_granted = True
-                else:
-                    st.error("❌ Incorrect access key.")
-        st.stop()
-
-    # Access granted: show DB
+    st.subheader("📋 View Database Tables")
     table = st.selectbox("Select table to view", [
         "experiments", "rigs", "exp_groups", "mice", "training_folders", "days", "files"
     ])
