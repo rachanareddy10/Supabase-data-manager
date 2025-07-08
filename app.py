@@ -7,15 +7,47 @@ from dotenv import load_dotenv
 from supabase import create_client
 from folder_uploader import process_folder, get_db_connection
 
-if not st.session_state.get("logged_in", False):
-    st.warning("🔐 You must log in first.")
+# -------------------------------
+# 🔐 Login Handling (top of file)
+# -------------------------------
+
+def check_login(username, password):
+    return (
+        username == st.secrets["login"]["username"]
+        and password == st.secrets["login"]["password"]
+    )
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if not st.session_state.logged_in:
+    st.set_page_config(page_title="Lemon Lab Data Portal", layout="centered")
+    st.title("🔐 Lemon Lab Data Portal")
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+        if submitted:
+            if check_login(username.strip(), password.strip()):
+                st.session_state.logged_in = True
+                st.success("✅ Login successful! Please wait...")
+                st.experimental_rerun()
+            else:
+                st.error("❌ Invalid username or password.")
     st.stop()
 
-st.set_page_config(page_title="Lemon Lab Portal", layout="wide")
-st.title("Lemon Lab Data Portal")
+# -------------------------------
+# ✅ Main App (only if logged in)
+# -------------------------------
+st.set_page_config(page_title="Lemon Lab Data Portal", layout="wide")
+st.title("🐭 Lemon Lab Data Portal")
 
 # 🔁 Logout
-st.sidebar.button("🚪 Logout", on_click=lambda: st.session_state.clear())
+st.sidebar.title("Session")
+if st.sidebar.button("🚪 Logout"):
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.experimental_rerun()
 
 # Load env
 load_dotenv()
@@ -38,6 +70,9 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
+# -------------------------------
+# Tabs: Upload and View Database
+# -------------------------------
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
 with tab1:
