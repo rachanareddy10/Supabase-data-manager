@@ -7,55 +7,22 @@ from dotenv import load_dotenv
 from supabase import create_client
 from folder_uploader import process_folder, get_db_connection
 
-# -------------------------------
-# 🔐 Login check FIRST — before layout
-# -------------------------------
-def check_login(username, password):
-    return (
-        username == st.secrets["login"]["username"]
-        and password == st.secrets["login"]["password"]
-    )
-
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
-    st.set_page_config(page_title="Data Management", layout="wide")
-    st.title("Lemon Lab Data Portal")
-    st.subheader("🔐 Please log in to continue")
-    with st.form("login_form"):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Login")
-        if submitted:
-            if check_login(username.strip(), password.strip()):
-                st.session_state.logged_in = True
-                st.experimental_rerun()
-            else:
-                st.error("❌ Invalid username or password.")
+if not st.session_state.get("logged_in", False):
+    st.warning("🔐 You must log in first.")
     st.stop()
 
-# ✅ Now render layout AFTER login only
-st.set_page_config(page_title="Data Management", layout="wide")
+st.set_page_config(page_title="Lemon Lab Portal", layout="wide")
 st.title("Lemon Lab Data Portal")
 
-# -------------------------------
-# 🔁 Logout button
-# -------------------------------
-st.sidebar.title("Session")
-if st.sidebar.button("🚪 Logout"):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.experimental_rerun()
+# 🔁 Logout
+st.sidebar.button("🚪 Logout", on_click=lambda: st.session_state.clear())
 
 # Load env
 load_dotenv()
-
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# Clean helper
 def clean_system_files(root_path):
     for root, dirs, files in os.walk(root_path, topdown=False):
         for name in dirs + files:
@@ -71,9 +38,6 @@ def get_experiment_root(tmpdir):
              if not item.startswith(('.', '_')) and os.path.isdir(os.path.join(tmpdir, item))]
     return os.path.join(tmpdir, items[0]) if items else None
 
-# -------------------------------
-# 📤 Upload + 📂 View Tabs
-# -------------------------------
 tab1, tab2 = st.tabs(["📤 Upload Data", "📂 View Database"])
 
 with tab1:
