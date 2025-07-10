@@ -46,7 +46,7 @@ if not st.session_state.logged_in:
 # ✅ Main App (after login)
 # -------------------------------
 st.set_page_config(page_title="Lemon Lab Data Portal", layout="wide")
-st.title("🐭 Lemon Lab Data Portal")
+st.title("Lemon Lab Data Portal")
 
 # Logout button with proper session clearing
 if st.sidebar.button("🚪 Logout"):
